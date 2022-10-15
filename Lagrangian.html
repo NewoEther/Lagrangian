@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <meta charset="UTF-8">
+  <title>限制性三体问题模型</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+  </style>
+  <script src="./js/three.js"></script>
+  <script src="./js/OrbitControls.js"></script>
+  <script src="./js/dat.gui.js"></script>
+  <script src="./js/jquery-3.6.1.js"></script>
+  <script src="./js/jquery-ui.js"></script>
+  <link type="text/css" rel="stylesheet" href="./js/jquery-ui.css"></script>
+  <script>
+    var is_folded = false;
+    $(document).ready(function() {
+      fold = $("#fold").accordion({
+        heightStyle: "content",
+        collapsible: true,
+        icons: false,
+        beforeActivate(event,ui) {
+          if (!is_folded)
+          {
+            $("#fold_text").html("展开面板");
+            is_folded = true;
+          }
+          else
+          {
+            $("#fold_text").html("折叠面板");
+            is_folded = false;
+          }
+        }
+      });
+      $("#toolx_bar").accordion({
+        heightStyle: "content",
+        collapsible: true,
+        active: false
+      });
+      $("div").css({"padding":"0px"});
+
+      //line 1
+      var slider = $("#fov_slider").slider({
+        value: 60,
+        orientation: "horizontal",
+        range: "min",
+        min: 10,
+        max: 150,
+        slide: function(event,ui) {
+          spinner.spinner("value",ui.value);
+          camera.fov = ui.value;
+          camera.updateProjectionMatrix();
+        }
+      });
+      var spinner = $("#fov_spinner").spinner({
+        min: 10,
+        max: 150,
+        spin: function(event, ui) {
+          if (Number($(this).val())>=10 && Number($(this).val())<=150)
+          {
+            slider.slider("value",Number($(this).val()));
+            camera.fov = Number($(this).val());
+            camera.updateProjectionMatrix();
+          }
+        },
+        change: function(event, ui) {
+          if (Number($(this).val())>=10 && Number($(this).val())<=150)
+          {
+            slider.slider("value",Number($(this).val()));
+            camera.fov = Number($(this).val());
+            camera.updateProjectionMatrix();
+          }
+        },
+      });
+      spinner.spinner("value",60);
+
+      $("#fov_spinner").bind("keypress",function(event){
+        if (event.keyCode == "13" && Number($(this).val())>=10 && Number($(this).val())<=150)
+        {
+          slider.slider("value",Number($(this).val()));
+          camera.fov = Number($(this).val());
+          camera.updateProjectionMatrix();
+        }
+      });
+
+      //line 2
+      var dt_slider = $("#dt_slider").slider({
+        value: 0.01,
+        orientation: "horizontal",
+        range: "min",
+        min: 0.0001,
+        max: 0.1,
+        step: 0.0001,
+        slide: function(event,ui) {
+          dt_spinner.spinner("value",ui.value);
+          data.delta_t = ui.value;
+        }
+      });
+      var dt_spinner = $("#dt_spinner").spinner({
+        min: 0.0001,
+        max: 0.1,
+        step: 0.0001,
+        spin: function(event, ui) {
+          if (Number($(this).val())>=0.0001 && Number($(this).val())<=0.01)
+          {
+            dt_slider.slider("value",Number($(this).val()));
+            data.delta_t = Number($(this).val());
+          }
+        },
+        change: function(event, ui) {
+          if (Number($(this).val())>=0.0001 && Number($(this).val())<=0.01)
+          {
+            dt_slider.slider("value",Number($(this).val()));
+            data.delta_t = Number($(this).val());
+          }
+        }
+      });
+      dt_spinner.spinner("value",0.01);
+      
+      $("#dt_spinner").bind("keypress",function(event){
+        if (event.keyCode == "13" && Number($(this).val())>=0.0001 && Number($(this).val())<=0.1)
+        {
+          dt_slider.slider("value",Number($(this).val()));
+          data.delta_t = Number($(this).val());
+        }
+      });
+
+      //line 3
+      var time_length_slider = $("#time_length_slider").slider({
+        value: 100,
+        orientation: "horizontal",
+        range: "min",
+        min: 1,
+        max: 1000,
+        slide: function(event,ui) {
+          time_length_spinner.spinner("value",ui.value);
+          data.t_length = ui.value;
+        }
+      });
+      var time_length_spinner = $("#time_length_spinner").spinner({
+        min: 1,
+        max: 1000,
+        spin: function(event, ui) {
+          if (Number($(this).val())>=1 && Number($(this).val())<=1000)
+          {
+            time_length_slider.slider("value",Number($(this).val()));
+            data.t_length = Number($(this).val());
+          }
+        },
+        change: function(event, ui) {
+          if (Number($(this).val())>=1 && Number($(this).val())<=1000)
+          {
+            time_length_slider.slider("value",Number($(this).val()));
+            data.t_length = Number($(this).val());
+          }
+        }
+      });
+      time_length_spinner.spinner("value",100);
+
+      $("#time_length_spinner").bind("keypress",function(event){
+        if (event.keyCode == "13" && Number($(this).val())>=1 && Number($(this).val())<=1000)
+        {
+          time_length_slider.slider("value",Number($(this).val()));
+          data.t_length = Number($(this).val());
+        }
+      });
+
+      //line 4
+      var points_num_slider = $("#points_num_slider").slider({
+        value: 1000,
+        orientation: "horizontal",
+        range: "min",
+        min: 100,
+        max: 10000,
+        slide: function(event,ui) {
+          points_num_spinner.spinner("value",ui.value);
+          data.points_number = ui.value;
+        }
+      });
+      var points_num_spinner = $("#points_num_spinner").spinner({
+        min: 100,
+        max: 10000,
+        spin: function(event, ui) {
+          if (Number($(this).val())>=100 && Number($(this).val())<=10000)
+          {
+            points_num_slider.slider("value",Number($(this).val()));
+            data.points_number = Number($(this).val());
+          }
+        },
+        change: function(event, ui) {
+          if (Number($(this).val())>=100 && Number($(this).val())<=10000)
+          {
+            points_num_slider.slider("value",Number($(this).val()));
+            data.points_number = Number($(this).val());
+          }
+        }
+      });
+      points_num_spinner.spinner("value",1000);
+      
+      $("#points_num_spinner").bind("keypress",function(event){
+        if (event.keyCode == "13" && Number($(this).val())>=100 && Number($(this).val())<=10000)
+        {
+          points_num_slider.slider("value",Number($(this).val()));
+          data.points_number = Number($(this).val());
+        }
+      });
+
+      //line 5
+      var red_mass_slider = $("#red_mass_slider").slider({
+        value: 10,
+        orientation: "horizontal",
+        range: "min",
+        min: 0,
+        max: 100,
+        step: 0.001,
+        slide: function(event,ui) {
+          red_mass_spinner.spinner("value",ui.value);
+          data.mass1 = ui.value;
+        }
+      });
+      var red_mass_spinner = $("#red_mass_spinner").spinner({
+        min: 0,
+        max: 100,
+        step: 0.001,
+        spin: function(event, ui) {
+          if (Number($(this).val())>=0 && Number($(this).val())<=100)
+          {
+            red_mass_slider.slider("value",Number($(this).val()));
+            red_mass_number = Number($(this).val());
+          }
+        },
+        change: function(event, ui) {
+          if (Number($(this).val())>=0 && Number($(this).val())<=100)
+          {
+            red_mass_slider.slider("value",Number($(this).val()));
+            data.mass1 = Number($(this).val());
+          }
+        }
+      });
+      red_mass_spinner.spinner("value",10);
+      
+      $("#red_mass_spinner").bind("keypress",function(event){
+        if (event.keyCode == "13" && Number($(this).val())>=0 && Number($(this).val())<=100)
+        {
+          red_mass_slider.slider("value",Number($(this).val()));
+          data.mass1 = Number($(this).val());
+        }
+      });
+
+      //line 6
+      var green_mass_slider = $("#green_mass_slider").slider({
+        value: 1,
+        orientation: "horizontal",
+        range: "min",
+        min: 0,
+        max: 100,
+        step: 0.001,
+        slide: function(event,ui) {
+          green_mass_spinner.spinner("value",ui.value);
+          data.mass2 = ui.value;
+        }
+      });
+      var green_mass_spinner = $("#green_mass_spinner").spinner({
+        min: 0,
+        max: 100,
+        step: 0.001,
+        spin: function(event, ui) {
+          if (Number($(this).val())>=0 && Number($(this).val())<=100)
+          {
+            green_mass_slider.slider("value",Number($(this).val()));
+            green_mass_number = Number($(this).val());
+          }
+        },
+        change: function(event, ui) {
+          if (Number($(this).val())>=0 && Number($(this).val())<=100)
+          {
+            green_mass_slider.slider("value",Number($(this).val()));
+            data.mass2 = Number($(this).val());
+          }
+        }
+      });
+      green_mass_spinner.spinner("value",1);
+      
+      $("#green_mass_spinner").bind("keypress",function(event){
+        if (event.keyCode == "13" && Number($(this).val())>=0 && Number($(this).val())<=100)
+        {
+          green_mass_slider.slider("value",Number($(this).val()));
+          data.mass2 = Number($(this).val());
+        }
+      });
+
+      //line 7
+      var distance_slider = $("#distance_slider").slider({
+        value: 3,
+        orientation: "horizontal",
+        range: "min",
+        min: 0,
+        max: 10,
+        step: 0.001,
+        slide: function(event,ui) {
+          distance_spinner.spinner("value",ui.value);
+          data.distance = ui.value;
+        }
+      });
+      var distance_spinner = $("#distance_spinner").spinner({
+        min: 0,
+        max: 10,
+        step: 0.001,
+        spin: function(event, ui) {
+          if (Number($(this).val())>=0 && Number($(this).val())<=10)
+          {
+            distance_slider.slider("value",Number($(this).val()));
+            data.distance = Number($(this).val());
+          }
+        },
+        change: function(event, ui) {
+          if (Number($(this).val())>=0 && Number($(this).val())<=10)
+          {
+            distance_slider.slider("value",Number($(this).val()));
+            data.distance = Number($(this).val());
+          }
+        }
+      });
+      distance_spinner.spinner("value",3);
+      
+      $("#distance_spinner").bind("keypress",function(event){
+        if (event.keyCode == "13" && Number($(this).val())>=0 && Number($(this).val())<=10)
+        {
+          distance_slider.slider("value",Number($(this).val()));
+          data.distance = Number($(this).val());
+        }
+      });
+
+      //line 8
+      var x_bar = document.getElementById("x_slider");
+      var x_thumb = document.getElementById("x_thumb");
+      x_thumb.onmousedown = function(event) {
+        data.is_x_moving = true;
+        var x_barActualLeft = x_bar.offsetLeft;
+        var current = x_bar.offsetParent;
+        while (current !== null)
+        {
+          x_barActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        var x_thumbActualLeft = x_thumb.offsetLeft;
+        var current = x_thumb.offsetParent;
+        while (current !== null)
+        {
+          x_thumbActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let x_newThumbX = event.clientX - x_barActualLeft;
+        if (x_newThumbX < 0)
+        {
+          x_newThumbX = 0;
+        }
+        if (x_newThumbX > 320)
+        {
+          x_newThumbX = 320;
+        }
+        x_thumb.style.left = x_newThumbX - 10/2 + "px";
+        data.x_thumb_pos = x_newThumbX - 320/2;
+        event.preventDefault();
+        document.onmousemove = function(event) {
+          data.is_x_moving = true;
+          event.preventDefault();
+          var x_barActualLeft = x_bar.offsetLeft;
+          var current = x_bar.offsetParent;
+          while (current !== null)
+          {
+            x_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var x_thumbActualLeft = x_thumb.offsetLeft;
+          var current = x_thumb.offsetParent;
+          while (current !== null)
+          {
+            x_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let x_newThumbX = event.clientX - x_barActualLeft;
+          if (x_newThumbX < 0)
+          {
+            x_newThumbX = 0;
+          }
+          if (x_newThumbX > 320)
+          {
+            x_newThumbX = 320;
+          }
+          x_thumb.style.left = x_newThumbX - 10/2 + "px";
+          data.x_thumb_pos = x_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_x_moving = false;
+          x_thumb.style.left = 320/2 - 10/2 + "px";
+          data.x_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_x_moving = false;
+          x_thumb.style.left = 320/2 - 10/2 + "px";
+          data.x_thumb_pos = 0;
+        }
+      }
+      x_bar.onmousedown = function (ev) {
+        data.is_x_moving = true;
+        ev.preventDefault();
+        var actualLeft = x_bar.offsetLeft;
+        var current = x_bar.offsetParent;
+        while (current !== null)
+        {
+          actualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let left = ev.clientX - actualLeft;
+        if (left < 0)
+        {
+          left = 0;
+        }
+        if (left > 320) {
+          left = 320;
+        }
+        x_thumb.style.left = left - 10/2 + "px";
+        data.x_thumb_pos = left - 320/2;
+        
+        document.onmousemove = function(event) {
+          data.is_x_moving = true;
+          event.preventDefault();
+          var x_barActualLeft = x_bar.offsetLeft;
+          var current = x_bar.offsetParent;
+          while (current !== null)
+          {
+            x_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var x_thumbActualLeft = x_thumb.offsetLeft;
+          var current = x_thumb.offsetParent;
+          while (current !== null)
+          {
+            x_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let x_newThumbX = event.clientX - x_barActualLeft;
+          if (x_newThumbX < 0)
+          {
+            x_newThumbX = 0;
+          }
+          if (x_newThumbX > 320)
+          {
+            x_newThumbX = 320;
+          }
+          x_thumb.style.left = x_newThumbX - 10/2 + "px";
+          data.x_thumb_pos = x_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_x_moving = false;
+          x_thumb.style.left = 320/2 - 10/2 + "px";
+          data.x_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_x_moving = false;
+          x_thumb.style.left = 320/2 - 10/2 + "px";
+          data.x_thumb_pos = 0;
+        }
+      }
+
+      var x_spinner = document.getElementById("x_spinner");
+      x_spinner.value = "1.7015";
+      x_spinner.oninput = function(event) {
+        let value = x_spinner.value;
+        if (Number(value)>=-10 && Number(value)<=10)
+        {
+          data.X = Number(value);
+        }
+      }
+
+
+      //line 9
+      var y_bar = document.getElementById("y_slider");
+      var y_thumb = document.getElementById("y_thumb");
+      y_thumb.onmousedown = function(event) {
+        data.is_y_moving = true;
+        var y_barActualLeft = y_bar.offsetLeft;
+        var current = y_bar.offsetParent;
+        while (current !== null)
+        {
+          y_barActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        var y_thumbActualLeft = y_thumb.offsetLeft;
+        var current = y_thumb.offsetParent;
+        while (current !== null)
+        {
+          y_thumbActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let y_newThumbX = event.clientX - y_barActualLeft;
+        if (y_newThumbX < 0)
+        {
+          y_newThumbX = 0;
+        }
+        if (y_newThumbX > 320)
+        {
+          y_newThumbX = 320;
+        }
+        y_thumb.style.left = y_newThumbX - 10/2 + "px";
+        data.y_thumb_pos = y_newThumbX - 320/2;
+        event.preventDefault();
+        document.onmousemove = function(event) {
+          data.is_y_moving = true;
+          event.preventDefault();
+          var y_barActualLeft = y_bar.offsetLeft;
+          var current = y_bar.offsetParent;
+          while (current !== null)
+          {
+            y_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var y_thumbActualLeft = y_thumb.offsetLeft;
+          var current = y_thumb.offsetParent;
+          while (current !== null)
+          {
+            y_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let y_newThumbX = event.clientX - y_barActualLeft;
+          if (y_newThumbX < 0)
+          {
+            y_newThumbX = 0;
+          }
+          if (y_newThumbX > 320)
+          {
+            y_newThumbX = 320;
+          }
+          y_thumb.style.left = y_newThumbX - 10/2 + "px";
+          data.y_thumb_pos = y_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_y_moving = false;
+          y_thumb.style.left = 320/2 - 10/2 + "px";
+          data.y_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_y_moving = false;
+          y_thumb.style.left = 320/2 - 10/2 + "px";
+          data.y_thumb_pos = 0;
+        }
+      }
+      y_bar.onmousedown = function (ev) {
+        data.is_y_moving = true;
+        ev.preventDefault();
+        var actualLeft = y_bar.offsetLeft;
+        var current = y_bar.offsetParent;
+        while (current !== null)
+        {
+          actualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let left = ev.clientX - actualLeft;
+        if (left < 0)
+        {
+          left = 0;
+        }
+        if (left > 320) {
+          left = 320;
+        }
+        y_thumb.style.left = left - 10/2 + "px";
+        data.y_thumb_pos = left - 320/2;
+        
+        document.onmousemove = function(event) {
+          data.is_y_moving = true;
+          event.preventDefault();
+          var y_barActualLeft = y_bar.offsetLeft;
+          var current = y_bar.offsetParent;
+          while (current !== null)
+          {
+            y_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var y_thumbActualLeft = y_thumb.offsetLeft;
+          var current = y_thumb.offsetParent;
+          while (current !== null)
+          {
+            y_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let y_newThumbX = event.clientX - y_barActualLeft;
+          if (y_newThumbX < 0)
+          {
+            y_newThumbX = 0;
+          }
+          if (y_newThumbX > 320)
+          {
+            y_newThumbX = 320;
+          }
+          y_thumb.style.left = y_newThumbX - 10/2 + "px";
+          data.y_thumb_pos = y_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_y_moving = false;
+          y_thumb.style.left = 320/2 - 10/2 + "px";
+          data.y_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_y_moving = false;
+          y_thumb.style.left = 320/2 - 10/2 + "px";
+          data.y_thumb_pos = 0;
+        }
+      }
+
+      var y_spinner = document.getElementById("y_spinner");
+      y_spinner.value = "0";
+      y_spinner.oninput = function(event) {
+        let value = y_spinner.value;
+        if (Number(value)>=-10 && Number(value)<=10)
+        {
+          data.Y = Number(value);
+        }
+      }
+
+      //line 10
+      var z_bar = document.getElementById("z_slider");
+      var z_thumb = document.getElementById("z_thumb");
+      z_thumb.onmousedown = function(event) {
+        data.is_z_moving = true;
+        var z_barActualLeft = z_bar.offsetLeft;
+        var current = z_bar.offsetParent;
+        while (current !== null)
+        {
+          z_barActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        var z_thumbActualLeft = z_thumb.offsetLeft;
+        var current = z_thumb.offsetParent;
+        while (current !== null)
+        {
+          z_thumbActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let z_newThumbX = event.clientX - z_barActualLeft;
+        if (z_newThumbX < 0)
+        {
+          z_newThumbX = 0;
+        }
+        if (z_newThumbX > 320)
+        {
+          z_newThumbX = 320;
+        }
+        z_thumb.style.left = z_newThumbX - 10/2 + "px";
+        data.z_thumb_pos = z_newThumbX - 320/2;
+        event.preventDefault();
+        document.onmousemove = function(event) {
+          data.is_z_moving = true;
+          event.preventDefault();
+          var z_barActualLeft = z_bar.offsetLeft;
+          var current = z_bar.offsetParent;
+          while (current !== null)
+          {
+            z_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var z_thumbActualLeft = z_thumb.offsetLeft;
+          var current = z_thumb.offsetParent;
+          while (current !== null)
+          {
+            z_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let z_newThumbX = event.clientX - z_barActualLeft;
+          if (z_newThumbX < 0)
+          {
+            z_newThumbX = 0;
+          }
+          if (z_newThumbX > 320)
+          {
+            z_newThumbX = 320;
+          }
+          z_thumb.style.left = z_newThumbX - 10/2 + "px";
+          data.z_thumb_pos = z_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_z_moving = false;
+          z_thumb.style.left = 320/2 - 10/2 + "px";
+          data.z_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_z_moving = false;
+          z_thumb.style.left = 320/2 - 10/2 + "px";
+          data.z_thumb_pos = 0;
+        }
+      }
+      z_bar.onmousedown = function (ev) {
+        data.is_z_moving = true;
+        ev.preventDefault();
+        var actualLeft = z_bar.offsetLeft;
+        var current = z_bar.offsetParent;
+        while (current !== null)
+        {
+          actualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let left = ev.clientX - actualLeft;
+        if (left < 0)
+        {
+          left = 0;
+        }
+        if (left > 320) {
+          left = 320;
+        }
+        z_thumb.style.left = left - 10/2 + "px";
+        data.z_thumb_pos = left - 320/2;
+        
+        document.onmousemove = function(event) {
+          data.is_z_moving = true;
+          event.preventDefault();
+          var z_barActualLeft = z_bar.offsetLeft;
+          var current = z_bar.offsetParent;
+          while (current !== null)
+          {
+            z_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var z_thumbActualLeft = z_thumb.offsetLeft;
+          var current = z_thumb.offsetParent;
+          while (current !== null)
+          {
+            z_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let z_newThumbX = event.clientX - z_barActualLeft;
+          if (z_newThumbX < 0)
+          {
+            z_newThumbX = 0;
+          }
+          if (z_newThumbX > 320)
+          {
+            z_newThumbX = 320;
+          }
+          z_thumb.style.left = z_newThumbX - 10/2 + "px";
+          data.z_thumb_pos = z_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_z_moving = false;
+          z_thumb.style.left = 320/2 - 10/2 + "px";
+          data.z_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_z_moving = false;
+          z_thumb.style.left = 320/2 - 10/2 + "px";
+          data.z_thumb_pos = 0;
+        }
+      }
+
+      var z_spinner = document.getElementById("z_spinner");
+      z_spinner.value = "0";
+      z_spinner.oninput = function(event) {
+        let value = z_spinner.value;
+        if (Number(value)>=-10 && Number(value)<=10)
+        {
+          data.Z = Number(value);
+        }
+      }
+
+      //line 11
+      var vx_bar = document.getElementById("vx_slider");
+      var vx_thumb = document.getElementById("vx_thumb");
+      vx_thumb.onmousedown = function(event) {
+        data.is_vx_moving = true;
+        var vx_barActualLeft = vx_bar.offsetLeft;
+        var current = vx_bar.offsetParent;
+        while (current !== null)
+        {
+          vx_barActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        var vx_thumbActualLeft = vx_thumb.offsetLeft;
+        var current = vx_thumb.offsetParent;
+        while (current !== null)
+        {
+          vx_thumbActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let vx_newThumbX = event.clientX - vx_barActualLeft;
+        if (vx_newThumbX < 0)
+        {
+          vx_newThumbX = 0;
+        }
+        if (vx_newThumbX > 320)
+        {
+          vx_newThumbX = 320;
+        }
+        vx_thumb.style.left = vx_newThumbX - 10/2 + "px";
+        data.vx_thumb_pos = vx_newThumbX - 320/2;
+        event.preventDefault();
+        document.onmousemove = function(event) {
+          data.is_vx_moving = true;
+          event.preventDefault();
+          var vx_barActualLeft = vx_bar.offsetLeft;
+          var current = vx_bar.offsetParent;
+          while (current !== null)
+          {
+            vx_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var vx_thumbActualLeft = vx_thumb.offsetLeft;
+          var current = vx_thumb.offsetParent;
+          while (current !== null)
+          {
+            vx_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let vx_newThumbX = event.clientX - vx_barActualLeft;
+          if (vx_newThumbX < 0)
+          {
+            vx_newThumbX = 0;
+          }
+          if (vx_newThumbX > 320)
+          {
+            vx_newThumbX = 320;
+          }
+          vx_thumb.style.left = vx_newThumbX - 10/2 + "px";
+          data.vx_thumb_pos = vx_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_vx_moving = false;
+          vx_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vx_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_vx_moving = false;
+          vx_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vx_thumb_pos = 0;
+        }
+      }
+      vx_bar.onmousedown = function (ev) {
+        data.is_vx_moving = true;
+        ev.preventDefault();
+        var actualLeft = vx_bar.offsetLeft;
+        var current = vx_bar.offsetParent;
+        while (current !== null)
+        {
+          actualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let left = ev.clientX - actualLeft;
+        if (left < 0)
+        {
+          left = 0;
+        }
+        if (left > 320) {
+          left = 320;
+        }
+        vx_thumb.style.left = left - 10/2 + "px";
+        data.vx_thumb_pos = left - 320/2;
+        
+        document.onmousemove = function(event) {
+          data.is_vx_moving = true;
+          event.preventDefault();
+          var vx_barActualLeft = vx_bar.offsetLeft;
+          var current = vx_bar.offsetParent;
+          while (current !== null)
+          {
+            vx_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var vx_thumbActualLeft = vx_thumb.offsetLeft;
+          var current = vx_thumb.offsetParent;
+          while (current !== null)
+          {
+            vx_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let vx_newThumbX = event.clientX - vx_barActualLeft;
+          if (vx_newThumbX < 0)
+          {
+            vx_newThumbX = 0;
+          }
+          if (vx_newThumbX > 320)
+          {
+            vx_newThumbX = 320;
+          }
+          vx_thumb.style.left = vx_newThumbX - 10/2 + "px";
+          data.vx_thumb_pos = vx_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_vx_moving = false;
+          vx_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vx_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_vx_moving = false;
+          vx_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vx_thumb_pos = 0;
+        }
+      }
+
+      var vx_spinner = document.getElementById("vx_spinner");
+      vx_spinner.value = "0";
+      vx_spinner.oninput = function(event) {
+        let value = vx_spinner.value;
+        if (Number(value)>=-10 && Number(value)<=10)
+        {
+          data.Vx = Number(value);
+        }
+      }
+
+      //line 12
+      var vy_bar = document.getElementById("vy_slider");
+      var vy_thumb = document.getElementById("vy_thumb");
+      vy_thumb.onmousedown = function(event) {
+        data.is_vy_moving = true;
+        var vy_barActualLeft = vy_bar.offsetLeft;
+        var current = vy_bar.offsetParent;
+        while (current !== null)
+        {
+          vy_barActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        var vy_thumbActualLeft = vy_thumb.offsetLeft;
+        var current = vy_thumb.offsetParent;
+        while (current !== null)
+        {
+          vy_thumbActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let vy_newThumbX = event.clientX - vy_barActualLeft;
+        if (vy_newThumbX < 0)
+        {
+          vy_newThumbX = 0;
+        }
+        if (vy_newThumbX > 320)
+        {
+          vy_newThumbX = 320;
+        }
+        vy_thumb.style.left = vy_newThumbX - 10/2 + "px";
+        data.vy_thumb_pos = vy_newThumbX - 320/2;
+        event.preventDefault();
+        document.onmousemove = function(event) {
+          data.is_vy_moving = true;
+          event.preventDefault();
+          var vy_barActualLeft = vy_bar.offsetLeft;
+          var current = vy_bar.offsetParent;
+          while (current !== null)
+          {
+            vy_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var vy_thumbActualLeft = vy_thumb.offsetLeft;
+          var current = vy_thumb.offsetParent;
+          while (current !== null)
+          {
+            vy_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let vy_newThumbX = event.clientX - vy_barActualLeft;
+          if (vy_newThumbX < 0)
+          {
+            vy_newThumbX = 0;
+          }
+          if (vy_newThumbX > 320)
+          {
+            vy_newThumbX = 320;
+          }
+          vy_thumb.style.left = vy_newThumbX - 10/2 + "px";
+          data.vy_thumb_pos = vy_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_vy_moving = false;
+          vy_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vy_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_vy_moving = false;
+          vy_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vy_thumb_pos = 0;
+        }
+      }
+      vy_bar.onmousedown = function (ev) {
+        data.is_vy_moving = true;
+        ev.preventDefault();
+        var actualLeft = vy_bar.offsetLeft;
+        var current = vy_bar.offsetParent;
+        while (current !== null)
+        {
+          actualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let left = ev.clientX - actualLeft;
+        if (left < 0)
+        {
+          left = 0;
+        }
+        if (left > 320) {
+          left = 320;
+        }
+        vy_thumb.style.left = left - 10/2 + "px";
+        data.vy_thumb_pos = left - 320/2;
+        
+        document.onmousemove = function(event) {
+          data.is_vy_moving = true;
+          event.preventDefault();
+          var vy_barActualLeft = vy_bar.offsetLeft;
+          var current = vy_bar.offsetParent;
+          while (current !== null)
+          {
+            vy_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var vy_thumbActualLeft = vy_thumb.offsetLeft;
+          var current = vy_thumb.offsetParent;
+          while (current !== null)
+          {
+            vy_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let vy_newThumbX = event.clientX - vy_barActualLeft;
+          if (vy_newThumbX < 0)
+          {
+            vy_newThumbX = 0;
+          }
+          if (vy_newThumbX > 320)
+          {
+            vy_newThumbX = 320;
+          }
+          vy_thumb.style.left = vy_newThumbX - 10/2 + "px";
+          data.vy_thumb_pos = vy_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_vy_moving = false;
+          vy_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vy_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_vy_moving = false;
+          vy_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vy_thumb_pos = 0;
+        }
+      }
+
+      var vy_spinner = document.getElementById("vy_spinner");
+      vy_spinner.value = "0.999196";
+      vy_spinner.oninput = function(event) {
+        let value = vy_spinner.value;
+        if (Number(value)>=-10 && Number(value)<=10)
+        {
+          data.Vy = Number(value);
+        }
+      }
+
+      //line 13
+      var vz_bar = document.getElementById("vz_slider");
+      var vz_thumb = document.getElementById("vz_thumb");
+      vz_thumb.onmousedown = function(event) {
+        data.is_vz_moving = true;
+        var vz_barActualLeft = vz_bar.offsetLeft;
+        var current = vz_bar.offsetParent;
+        while (current !== null)
+        {
+          vz_barActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        var vz_thumbActualLeft = vz_thumb.offsetLeft;
+        var current = vz_thumb.offsetParent;
+        while (current !== null)
+        {
+          vz_thumbActualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let vz_newThumbX = event.clientX - vz_barActualLeft;
+        if (vz_newThumbX < 0)
+        {
+          vz_newThumbX = 0;
+        }
+        if (vz_newThumbX > 320)
+        {
+          vz_newThumbX = 320;
+        }
+        vz_thumb.style.left = vz_newThumbX - 10/2 + "px";
+        data.vz_thumb_pos = vz_newThumbX - 320/2;
+        event.preventDefault();
+        document.onmousemove = function(event) {
+          data.is_vz_moving = true;
+          event.preventDefault();
+          var vz_barActualLeft = vz_bar.offsetLeft;
+          var current = vz_bar.offsetParent;
+          while (current !== null)
+          {
+            vz_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var vz_thumbActualLeft = vz_thumb.offsetLeft;
+          var current = vz_thumb.offsetParent;
+          while (current !== null)
+          {
+            vz_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let vz_newThumbX = event.clientX - vz_barActualLeft;
+          if (vz_newThumbX < 0)
+          {
+            vz_newThumbX = 0;
+          }
+          if (vz_newThumbX > 320)
+          {
+            vz_newThumbX = 320;
+          }
+          vz_thumb.style.left = vz_newThumbX - 10/2 + "px";
+          data.vz_thumb_pos = vz_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_vz_moving = false;
+          vz_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vz_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_vz_moving = false;
+          vz_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vz_thumb_pos = 0;
+        }
+      }
+      vz_bar.onmousedown = function (ev) {
+        data.is_vz_moving = true;
+        ev.preventDefault();
+        var actualLeft = vz_bar.offsetLeft;
+        var current = vz_bar.offsetParent;
+        while (current !== null)
+        {
+          actualLeft += current.offsetLeft;
+          current = current.offsetParent;
+        }
+        let left = ev.clientX - actualLeft;
+        if (left < 0)
+        {
+          left = 0;
+        }
+        if (left > 320) {
+          left = 320;
+        }
+        vz_thumb.style.left = left - 10/2 + "px";
+        data.vz_thumb_pos = left - 320/2;
+        
+        document.onmousemove = function(event) {
+          data.is_vz_moving = true;
+          event.preventDefault();
+          var vz_barActualLeft = vz_bar.offsetLeft;
+          var current = vz_bar.offsetParent;
+          while (current !== null)
+          {
+            vz_barActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          var vz_thumbActualLeft = vz_thumb.offsetLeft;
+          var current = vz_thumb.offsetParent;
+          while (current !== null)
+          {
+            vz_thumbActualLeft += current.offsetLeft;
+            current = current.offsetParent;
+          }
+          let vz_newThumbX = event.clientX - vz_barActualLeft;
+          if (vz_newThumbX < 0)
+          {
+            vz_newThumbX = 0;
+          }
+          if (vz_newThumbX > 320)
+          {
+            vz_newThumbX = 320;
+          }
+          vz_thumb.style.left = vz_newThumbX - 10/2 + "px";
+          data.vz_thumb_pos = vz_newThumbX - 320/2;
+        }
+        document.onmouseup = function () {
+          document.onmousemove = null;
+          data.is_vz_moving = false;
+          vz_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vz_thumb_pos = 0;
+        }
+        document.onmouseleave = function () {
+          document.onmousemove = null;
+          data.is_vz_moving = false;
+          vz_thumb.style.left = 320/2 - 10/2 + "px";
+          data.vz_thumb_pos = 0;
+        }
+      }
+
+      var vz_spinner = document.getElementById("vz_spinner");
+      vz_spinner.value = "0";
+      vz_spinner.oninput = function(event) {
+        let value = vz_spinner.value;
+        if (Number(value)>=-10 && Number(value)<=10)
+        {
+          data.Vz = Number(value);
+        }
+      }
+    });
+  </script>
+</head>
+
+<body>
+  <script>
+    //init variables
+    var data = {
+      mass1 : 10,
+      mass2 : 1,
+      distance : 3,
+      X : 1.7015,
+      Y : 0,
+      Z : 0,
+      Vx : 0,
+      Vy : 0.999196,
+      Vz : 0,
+      delta_t : 0.01,
+      t_length : 100,
+      points_number : 1000,
+      x_thumb_pos : 0,
+      is_x_moving : false,
+      y_thumb_pos : 0,
+      is_y_moving : false,
+      z_thumb_pos : 0,
+      is_z_moving : false,
+      vx_thumb_pos : 0,
+      is_vx_moving : false,
+      vy_thumb_pos : 0,
+      is_vy_moving : false,
+      vz_thumb_pos : 0,
+      is_vz_moving : false
+    };
+    var is_trajectory_added = false;
+    var actual_points_num = 0;
+
+    //add scene
+    var scene = new THREE.Scene();
+
+    //add renderer
+    var renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setSize(window.innerWidth,window.innerHeight);
+
+    //add camera
+    var camera = new THREE.PerspectiveCamera(60,window.innerWidth/window.innerHeight,0.01,10000);
+    camera.position.set(1.7,2,3);
+    scene.add(camera);
+
+    //add grid
+    var gridHelper = new THREE.GridHelper(20,100);
+    scene.add(gridHelper);
+
+    //add light
+    var directionallight = new THREE.DirectionalLight();
+    directionallight.position.set(2,5,3);
+    scene.add(directionallight);
+
+    //add sphere
+    var sphereA_geometry = new THREE.SphereGeometry(0.1);
+    var sphereA_material = new THREE.MeshLambertMaterial({color:0xff0000});
+    var sphereA = new THREE.Mesh(sphereA_geometry,sphereA_material);
+    scene.add(sphereA);
+
+    var sphereB_geometry = new THREE.SphereGeometry(0.1);
+    var sphereB_material = new THREE.MeshLambertMaterial({color:0x00ff00});
+    var sphereB = new THREE.Mesh(sphereB_geometry,sphereB_material);
+    scene.add(sphereB);
+
+    var sphereC_geometry = new THREE.SphereGeometry(0.05);
+    var sphereC_material = new THREE.MeshLambertMaterial({color:0xffff00});
+    var sphereC = new THREE.Mesh(sphereC_geometry,sphereC_material);
+    scene.add(sphereC);
+
+    //add curve
+    var trajectory_geometry = new THREE.BufferGeometry();
+    var trajectory_material = new THREE.LineBasicMaterial({color:0x00ffff});
+    var trajectory = new THREE.Line(trajectory_geometry,trajectory_material);
+
+    //add controller
+    var controller = new THREE.OrbitControls(camera,renderer.domElement);
+    controller.enableDamping = true;
+    controller.dampingFactor = 0.3;
+    controller.rotateSpeed = 0.5;
+    controller.target = new THREE.Vector3(1.7,0,0);
+    
+    //append carvas
+    document.body.appendChild(renderer.domElement);
+
+    function calculateTrajectory(x_0,y_0,z_0,x_dot_0,y_dot_0,z_dot_0,m1,m2,r_1_2,dt,end_t,points_num)
+    {
+      //constant
+      var G = 6.67*Math.pow(10,-11);
+      var M = m1 + m2;
+      var Omega = Math.sqrt(G*M/Math.pow(r_1_2,3));
+      var u1 = G*m1;
+      var u2 = G*m2;
+      var pi_1 = m1/(m1+m2);
+      var pi_2 = m2/(m1+m2);
+      var x1 = -pi_2*r_1_2;
+      var x2 = pi_1*r_1_2;
+      //list init
+      var List = new Array();
+      points_num = points_num > Math.floor(end_t/dt) ? Math.floor(end_t/dt) : points_num;
+      var x = x_0;
+      var y = y_0;
+      var z = z_0;
+      var x_dot = x_dot_0;
+      var y_dot = y_dot_0;
+      var z_dot = z_dot_0;
+      var n = 0;
+      var tolerance = Math.floor((Math.floor(end_t/dt)+1)/points_num);
+      for (var i = 0; i < Math.floor(end_t/dt)+1; i++)
+      {
+          r_1 = Math.sqrt(Math.pow(x-x1,2)+Math.pow(y,2)+Math.pow(z,2));
+          r_2 = Math.sqrt(Math.pow(x-x2,2)+Math.pow(y,2)+Math.pow(z,2));
+          x_ddot = 2*Omega*y_dot + Math.pow(Omega,2)*x - u1/Math.pow(r_1,3)*(x+pi_2*r_1_2) - u2/Math.pow(r_2,3)*(x-pi_1*r_1_2);
+          y_ddot = -2*Omega*x_dot + Math.pow(Omega,2)*y - u1/Math.pow(r_1,3)*y - u2/Math.pow(r_2,3)*y;
+          z_ddot = -u1/Math.pow(r_1,3)*z - u2/Math.pow(r_2,3)*z;
+          x += x_dot*dt;
+          y += y_dot*dt;
+          z += z_dot*dt;
+          x_dot += x_ddot*dt;
+          y_dot += y_ddot*dt;
+          z_dot += z_ddot*dt;
+          if (i % tolerance == 0)
+          {
+            List[n] = new THREE.Vector3(x,z,y);
+            n += 1;
+          }
+      }
+      actual_points_num = n;
+      return List;
+    }
+    
+    function render()
+    {
+      controller.update();
+      camera.updateProjectionMatrix();
+      
+      //create curve path
+      scene.remove(trajectory);
+      var list = calculateTrajectory(data.X,data.Y,data.Z,data.Vx*Math.pow(10,-5),data.Vy*Math.pow(10,-5),data.Vz*Math.pow(10,-5),data.mass1,data.mass2,data.distance,data.delta_t*Math.pow(10,4),data.t_length*Math.pow(10,4),data.points_number);
+      var curve = new THREE.CatmullRomCurve3(list);
+      var points = curve.getPoints(actual_points_num);
+      trajectory_geometry = new THREE.BufferGeometry().setFromPoints(points);
+      trajectory_material = new THREE.LineBasicMaterial({color:0x00ffff});
+      trajectory = new THREE.Line(trajectory_geometry,trajectory_material);
+      scene.add(trajectory);
+
+      sphereA.position.x = -data.mass2/(data.mass1+data.mass2)*data.distance;
+      sphereB.position.x = data.mass1/(data.mass1+data.mass2)*data.distance;
+      sphereC.position.x = data.X;
+      sphereC.position.y = data.Z;
+      sphereC.position.z = data.Y;
+      renderer.render(scene,camera);
+      requestAnimationFrame(render);
+
+      //change status vector
+      if (data.is_x_moving) {
+        var change_speed = Math.pow(data.x_thumb_pos, 3) * Math.pow(10,-9);
+        data.X += change_speed * (Date.now() - time);
+        if (typeof(x_spinner)!=="undefined" && x_spinner!==null){
+          x_spinner.value = data.X.toFixed(9);
+        }
+      }
+      if (data.is_y_moving) {
+        var change_speed = Math.pow(data.y_thumb_pos, 3) * Math.pow(10,-9);
+        data.Y += change_speed * (Date.now() - time);
+        if (typeof(y_spinner)!=="undefined" && y_spinner!==null){
+          y_spinner.value = data.Y.toFixed(9);
+        }
+      }
+      if (data.is_z_moving) {
+        var change_speed = Math.pow(data.z_thumb_pos, 3) * Math.pow(10,-9);
+        data.Z += change_speed * (Date.now() - time);
+        if (typeof(z_spinner)!=="undefined" && z_spinner!==null){
+          z_spinner.value = data.Z.toFixed(9);
+        }
+      }
+      if (data.is_vx_moving) {
+        var change_speed = Math.pow(data.vx_thumb_pos, 3) * Math.pow(10,-9);
+        data.Vx += change_speed * (Date.now() - time);
+        if (typeof(vx_spinner)!=="undefined" && vx_spinner!==null){
+          vx_spinner.value = data.Vx.toFixed(9);
+        }
+      }
+      if (data.is_vy_moving) {
+        var change_speed = Math.pow(data.vy_thumb_pos, 3) * Math.pow(10,-9);
+        data.Vy += change_speed * (Date.now() - time);
+        if (typeof(vy_spinner)!=="undefined" && vy_spinner!==null){
+          vy_spinner.value = data.Vy.toFixed(9);
+        }
+      }
+      if (data.is_vz_moving) {
+        var change_speed = Math.pow(data.vz_thumb_pos, 3) * Math.pow(10,-9);
+        data.Vz += change_speed * (Date.now() - time);
+        if (typeof(vz_spinner)!=="undefined" && vz_spinner!==null){
+          vz_spinner.value = data.Vz.toFixed(9);
+        }
+      }
+
+      //update time
+      time = Date.now();
+    }
+    //init time
+    var time = Date.now();
+    render();
+
+    //resize lisener
+    window.addEventListener("resize", ()=>{
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth,window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+    });
+  </script>
+  <div class="fold_container">
+    <div id="fold" class="fold_class">
+      <h3 id="fold_text">折叠面板</h3>
+      <div class="toolx_bar_container">
+        <div id="toolx_bar" class="toolx_bar_class">
+          <h3>视角设置</h3>
+          <div>
+            <p>
+              <div class="fov">&#160&#160&#160&#160</div>
+              <div class="fov">FOV&#160&#160</div>
+              <div id="fov_slider" class="fov fov1"></div>
+              <div class="fov">&#160&#160&#160&#160</div>
+              <input id="fov_spinner" class="fov fov2"></input>
+            </p>
+          </div>
+          <h3>轨迹设置</h3>
+          <div>
+            <p>
+              <div class="orbitA">&#160&#160&#160&#160&#160&#160</div>
+              <div class="orbitA">时间步长&#160&#160</div>
+              <div id="dt_slider" class="orbitA orbitA1"></div>
+              <div class="orbitA">&#160&#160&#160&#160</div>
+              <input id="dt_spinner" class="orbitA orbitA2"></input><br/>
+
+              <div class="orbitB">&#160&#160&#160&#160&#160&#160</div>
+              <div class="orbitB">预测长度&#160&#160</div>
+              <div id="time_length_slider" class="orbitB orbitB1"></div>
+              <div class="orbitB">&#160&#160&#160&#160</div>
+              <input id="time_length_spinner" class="orbitB orbitB2"></input><br/>
+
+              <div class="orbitC">&#160&#160&#160&#8201</div>
+              <div class="orbitC">轨迹分段数&#160&#160</div>
+              <div id="points_num_slider" class="orbitC orbitC1"></div>
+              <div class="orbitC">&#160&#160&#160&#160</div>
+              <input id="points_num_spinner" class="orbitC orbitC2"></input>
+            </p>
+          </div>
+          <h3>天体设置</h3>
+          <div>
+            <p>
+              <div class="bodyA">&#160&#160&#160&#160&#160&#160</div>
+              <div class="bodyA">红球质量&#160&#160</div>
+              <div id="red_mass_slider" class="bodyA bodyA1"></div>
+              <div class="bodyA">&#160&#160&#160&#160</div>
+              <input id="red_mass_spinner" class="bodyA bodyA2"></input><br/>
+
+              <div class="bodyB">&#160&#160&#160&#160&#160&#160</div>
+              <div class="bodyB">绿球质量&#160&#160</div>
+              <div id="green_mass_slider" class="bodyB bodyB1"></div>
+              <div class="bodyB">&#160&#160&#160&#160</div>
+              <input id="green_mass_spinner" class="bodyB bodyB2"></input><br/>
+
+              <div class="bodyC">&#160&#160&#160&#160&#160&#160</div>
+              <div class="bodyC">两球距离&#160&#160</div>
+              <div id="distance_slider" class="bodyC bodyC1"></div>
+              <div class="bodyC">&#160&#160&#160&#160</div>
+              <input id="distance_spinner" class="bodyC bodyC2"></input>
+            </p>
+          </div>
+          <h3>状态向量</h3>
+          <div>
+            <p>
+              <div class="vectorA blank">&#160&#160</div>
+              <div class="vectorA text">X &#160</div>
+              <div id="x_slider" class="vectorA vectorA1">
+                <div id="x_thumb" class="x_thumb"></div>
+              </div>
+              <div class="vectorA">&#160&#160&#160&#160</div>
+              <input id="x_spinner" class="vectorA vectorA2" value="1.7015"></input><br/>
+
+              <div class="vectorA blank">&#160&#160</div>
+              <div class="vectorB text">Y &#160</div>
+              <div id="y_slider" class="vectorB vectorB1">
+                <div id="y_thumb" class="y_thumb"></div>
+              </div>
+              <div class="vectorB">&#160&#160&#160&#160</div>
+              <input id="y_spinner" class="vectorB vectorB2" value="0"></input><br/>
+
+              <div class="vectorA blank">&#160&#160</div>
+              <div class="vectorC text">Z &#160</div>
+              <div id="z_slider" class="vectorC vectorC1">
+                <div id="z_thumb" class="z_thumb"></div>
+              </div>
+              <div class="vectorC">&#160&#160&#160&#160</div>
+              <input id="z_spinner" class="vectorC vectorC2" value="0"></input><br/>
+
+              <div class="vectorA blank">&#160&#160</div>
+              <div class="vectorD text">Vx &#160</div>
+              <div id="vx_slider" class="vectorD vectorD1">
+                <div id="vx_thumb" class="vx_thumb"></div>
+              </div>
+              <div class="vectorD">&#160&#160&#160&#160</div>
+              <input id="vx_spinner" class="vectorD vectorD2" value="0"></input><br/>
+
+              <div class="vectorA blank">&#160&#160</div>
+              <div class="vectorE text">Vy &#160</div>
+              <div id="vy_slider" class="vectorE vectorE1">
+                <div id="vy_thumb" class="vy_thumb"></div>
+              </div>
+              <div class="vectorE">&#160&#160&#160&#160</div>
+              <input id="vy_spinner" class="vectorE vectorE2" value="0.999196"></input><br/>
+
+              <div class="vectorA blank">&#160&#160</div>
+              <div class="vectorF text">Vz &#160</div>
+              <div id="vz_slider" class="vectorF vectorF1">
+                <div id="vz_thumb" class="vz_thumb"></div>
+              </div>
+              <div class="vectorF">&#160&#160&#160&#160</div>
+              <input id="vz_spinner" class="vectorF vectorF2" value="0"></input>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <style>
+    .fold_container {
+      position: fixed;
+      top: 0px;
+      right: 50px;
+      font-size: 10px;
+    }
+    .fold_class {
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+    .toolx_bar_container {
+      width: 500px;
+      font-size: 10px;
+    }
+
+    .fov {
+      display: inline-block;
+    }
+    .fov1 {
+      width: 300px;
+    }
+    .fov2 {
+      width: 40px;
+    }
+
+    .orbitA {
+      display: inline-block;
+    }
+    .orbitA1 {
+      width: 300px;
+    }
+    .orbitA2 {
+      width: 40px;
+    }
+    .orbitB {
+      display: inline-block;
+    }
+    .orbitB1 {
+      width: 300px;
+    }
+    .orbitB2 {
+      width: 40px;
+    }
+    .orbitC {
+      display: inline-block;
+    }
+    .orbitC1 {
+      width: 300px;
+    }
+    .orbitC2 {
+      width: 40px;
+    }
+
+    .bodyA {
+      display: inline-block;
+    }
+    .bodyA1 {
+      width: 300px;
+    }
+    .bodyA2 {
+      width: 40px;
+    }
+    .bodyB {
+      display: inline-block;
+    }
+    .bodyB1 {
+      width: 300px;
+    }
+    .bodyB2 {
+      width: 40px;
+    }
+    .bodyC {
+      display: inline-block;
+    }
+    .bodyC1 {
+      width: 300px;
+    }
+    .bodyC2 {
+      width: 40px;
+    }
+
+    .vectorA {
+      display: inline-block;
+      height: 30px;
+    }
+    .vectorA1 {
+      width: 320px;
+      height: 8px;
+      border-radius: 2px;
+      background: #39393b;
+      border: 1px solid #515253;
+      position: relative;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      cursor: pointer;
+    }
+    .x_thumb {
+      width: 10px;
+      height: 18px;
+      background: rgb(20, 74, 140);
+      border-width: 1px;
+      border-style: solid;
+      border-color: #2971bd;
+      position: relative;
+      top: -4.5px;
+      left: 155px;
+      border-radius: 2px;
+      cursor: pointer;
+      box-shadow: 0px 0px 1px 1px black;
+    }
+    .vectorA2 {
+      width: 80px;
+      height: 15px;
+      background-color: black;
+      border: 1px solid #747678;
+      border-radius: 2px;
+      color: white;
+    }
+    .vectorB {
+      display: inline-block;
+      height: 30px;
+    }
+    .vectorB1 {
+      width: 320px;
+      height: 8px;
+      border-radius: 2px;
+      background: #39393b;
+      border: 1px solid #515253;
+      position: relative;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      cursor: pointer;
+    }
+    .y_thumb {
+      width: 10px;
+      height: 18px;
+      background: rgb(20, 74, 140);
+      border-width: 1px;
+      border-style: solid;
+      border-color: #2971bd;
+      position: relative;
+      top: -4.5px;
+      left: 155px;
+      border-radius: 2px;
+      cursor: pointer;
+      box-shadow: 0px 0px 1px 1px black;
+    }
+    .vectorB2 {
+      width: 80px;
+      height: 15px;
+      background-color: black;
+      border: 1px solid #747678;
+      border-radius: 2px;
+      color: white;
+    }
+    .vectorC {
+      display: inline-block;
+      height: 30px;
+    }
+    .vectorC1 {
+      width: 320px;
+      height: 8px;
+      border-radius: 2px;
+      background: #39393b;
+      border: 1px solid #515253;
+      position: relative;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      cursor: pointer;
+    }
+    .z_thumb {
+      width: 10px;
+      height: 18px;
+      background: rgb(20, 74, 140);
+      border-width: 1px;
+      border-style: solid;
+      border-color: #2971bd;
+      position: relative;
+      top: -4.5px;
+      left: 155px;
+      border-radius: 2px;
+      cursor: pointer;
+      box-shadow: 0px 0px 1px 1px black;
+    }
+    .vectorC2 {
+      width: 80px;
+      height: 15px;
+      background-color: black;
+      border: 1px solid #747678;
+      border-radius: 2px;
+      color: white;
+    }
+    .vectorD {
+      display: inline-block;
+      height: 30px;
+    }
+    .vectorD1 {
+      width: 320px;
+      height: 8px;
+      border-radius: 2px;
+      background: #39393b;
+      border: 1px solid #515253;
+      position: relative;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      cursor: pointer;
+    }
+    .vx_thumb {
+      width: 10px;
+      height: 18px;
+      background: rgb(20, 74, 140);
+      border-width: 1px;
+      border-style: solid;
+      border-color: #2971bd;
+      position: relative;
+      top: -4.5px;
+      left: 155px;
+      border-radius: 2px;
+      cursor: pointer;
+      box-shadow: 0px 0px 1px 1px black;
+    }
+    .vectorD2 {
+      width: 80px;
+      height: 15px;
+      background-color: black;
+      border: 1px solid #747678;
+      border-radius: 2px;
+      color: white;
+    }
+    .vectorE {
+      display: inline-block;
+      height: 30px;
+    }
+    .vectorE1 {
+      width: 320px;
+      height: 8px;
+      border-radius: 2px;
+      background: #39393b;
+      border: 1px solid #515253;
+      position: relative;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      cursor: pointer;
+    }
+    .vy_thumb {
+      width: 10px;
+      height: 18px;
+      background: rgb(20, 74, 140);
+      border-width: 1px;
+      border-style: solid;
+      border-color: #2971bd;
+      position: relative;
+      top: -4.5px;
+      left: 155px;
+      border-radius: 2px;
+      cursor: pointer;
+      box-shadow: 0px 0px 1px 1px black;
+    }
+    .vectorE2 {
+      width: 80px;
+      height: 15px;
+      background-color: black;
+      border: 1px solid #747678;
+      border-radius: 2px;
+      color: white;
+    }
+    .vectorF {
+      display: inline-block;
+      height: 30px;
+    }
+    .vectorF1 {
+      width: 320px;
+      height: 8px;
+      border-radius: 2px;
+      background: #39393b;
+      border: 1px solid #515253;
+      position: relative;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      cursor: pointer;
+    }
+    .vz_thumb {
+      width: 10px;
+      height: 18px;
+      background: rgb(20, 74, 140);
+      border-width: 1px;
+      border-style: solid;
+      border-color: #2971bd;
+      position: relative;
+      top: -4.5px;
+      left: 155px;
+      border-radius: 2px;
+      cursor: pointer;
+      box-shadow: 0px 0px 1px 1px black;
+    }
+    .vectorF2 {
+      width: 80px;
+      height: 15px;
+      background-color: black;
+      border: 1px solid #747678;
+      border-radius: 2px;
+      color: white;
+    }
+
+    .text {
+      width: 30px;
+      height: 10px;
+      text-align: center;
+      font-family: "Microsoft YaHei";
+    }
+  </style>
+</body>
+</html>
