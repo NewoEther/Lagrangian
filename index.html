@@ -19,6 +19,11 @@
   <script>
     var is_folded = false;
     $(document).ready(function() {
+      context = $("#context").accordion({
+        heightStyle: "content",
+        collapsible: true,
+        icons: false
+      });
       fold = $("#fold").accordion({
         heightStyle: "content",
         collapsible: true,
@@ -36,7 +41,7 @@
           }
         }
       });
-      $("#toolx_bar").accordion({
+      $("#toolbar").accordion({
         heightStyle: "content",
         collapsible: true,
         active: false
@@ -86,6 +91,17 @@
           camera.updateProjectionMatrix();
         }
       });
+
+      //line 2
+      var axes_checkbox = document.getElementById("fov_checkbox");
+      x_line.material.visible = axes_checkbox.checked;
+      y_line.material.visible = axes_checkbox.checked;
+      z_line.material.visible = axes_checkbox.checked;
+      axes_checkbox.onchange = function(ev) {
+        x_line.material.visible = axes_checkbox.checked;
+        y_line.material.visible = axes_checkbox.checked;
+        z_line.material.visible = axes_checkbox.checked;
+      }
 
       //line 2
       var dt_slider = $("#dt_slider").slider({
@@ -1269,6 +1285,40 @@
     var gridHelper = new THREE.GridHelper(20,100);
     scene.add(gridHelper);
 
+    //add axes
+    var x_line_material = new THREE.LineBasicMaterial({color: 0xff0000});
+    var y_line_material = new THREE.LineBasicMaterial({color: 0x00ff00});
+    var z_line_material = new THREE.LineBasicMaterial({color: 0x0000ff});
+
+    var x_points = [];
+    var y_points = [];
+    var z_points = [];
+
+    x_points.push(new THREE.Vector3(0,0.005,0));
+    x_points.push(new THREE.Vector3(10,0.005,0));
+    
+    y_points.push(new THREE.Vector3(0,0.005,0));
+    y_points.push(new THREE.Vector3(0,0.005,10));
+
+    z_points.push(new THREE.Vector3(0,0.005,0));
+    z_points.push(new THREE.Vector3(0,10,0));
+
+    var x_line_geometry = new THREE.BufferGeometry().setFromPoints(x_points);
+    var y_line_geometry = new THREE.BufferGeometry().setFromPoints(y_points);
+    var z_line_geometry = new THREE.BufferGeometry().setFromPoints(z_points);
+
+    var x_line = new THREE.Line(x_line_geometry, x_line_material);
+    var y_line = new THREE.Line(y_line_geometry, y_line_material);
+    var z_line = new THREE.Line(z_line_geometry, z_line_material);
+
+    scene.add(x_line);
+    scene.add(y_line);
+    scene.add(z_line);
+
+    x_line.material.visible = false;
+    y_line.material.visible = false;
+    z_line.material.visible = false;
+
     //add light
     var directionallight = new THREE.DirectionalLight();
     directionallight.position.set(2,5,3);
@@ -1290,7 +1340,7 @@
     var sphereC = new THREE.Mesh(sphereC_geometry,sphereC_material);
     scene.add(sphereC);
 
-    //add curve
+    //add trajectory
     var trajectory_geometry = new THREE.BufferGeometry();
     var trajectory_material = new THREE.LineBasicMaterial({color:0x00ffff});
     var trajectory = new THREE.Line(trajectory_geometry,trajectory_material);
@@ -1433,19 +1483,43 @@
       renderer.setPixelRatio(window.devicePixelRatio);
     });
   </script>
+  <div class="context_container">
+    <div id="context" class="context_class">
+      <h3 class="context_class_1">使用说明</h3>
+      <div class="context_text">
+        <p>
+          &#160&#160&#160&#160 此网页是基于WebGL(three.js)的限制性三体问题模型。GUI部 &#160&#160&#160&#160<br/>
+          &#160&#160&#160&#160 分使用jQuery与原生javascript代码编写。可用于探究限制性三 &#160&#160&#160&#160<br/>
+          &#160&#160&#160&#160 体问题中的拉格朗日点稳定性及其位置维持轨道的形态等。坐标 &#160&#160&#160&#160<br/>
+          &#160&#160&#160&#160 系为轨道系(以红球和绿球之间的连线为参考系), 且坐标系原点建 &#160&#160&#160&#160<br/>
+          &#160&#160&#160&#160 立在系统质心上。
+        </p>
+        <p>
+          &#160&#160&#160&#160 你可以在“天体设置”菜单中设置红球与绿球的质量及两球之间的 &#160&#160&#160&#160<br/>
+          &#160&#160&#160&#160 距离。为了保证两球质心永远在坐标系原点上, 故不可自由设置 &#160&#160&#160&#160<br/>
+          &#160&#160&#160&#160 两球坐标。你可以自由改变黄球的状态向量(位置, 速度)来观察 &#160&#160&#160&#160<br/>
+          &#160&#160&#160&#160 轨道变化。x,y,z轴的正方向会在视图中显示(可以隐藏), 其中x &#160&#160&#160&#160<br/>
+          &#160&#160&#160&#160 轴是红色, y轴是绿色, z轴是蓝色。这可以作为设置黄球状态向 &#160&#160&#160&#160<br/>
+          &#160&#160&#160&#160 量时的参考。
+        </p>
+    </div>
+  </div>
   <div class="fold_container">
     <div id="fold" class="fold_class">
       <h3 id="fold_text">折叠面板</h3>
-      <div class="toolx_bar_container">
-        <div id="toolx_bar" class="toolx_bar_class">
-          <h3>视角设置</h3>
+      <div class="toolbar_container">
+        <div id="toolbar" class="toolbar_class">
+          <h3>视图设置</h3>
           <div>
             <p>
               <div class="fov">&#160&#160&#160&#160</div>
               <div class="fov">FOV&#160&#160</div>
               <div id="fov_slider" class="fov fov1"></div>
               <div class="fov">&#160&#160&#160&#160</div>
-              <input id="fov_spinner" class="fov fov2"></input>
+              <input id="fov_spinner" class="fov fov2"></input><br/>
+              <div class="fov">&#160&#160&#160&#160</div>
+              <div class="fov">显示坐标轴&#160&#160</div>
+              <input type="checkbox" id="fov_checkbox" class="fov fov3" checked="true">
             </p>
           </div>
           <h3>轨迹设置</h3>
@@ -1549,6 +1623,22 @@
     </div>
   </div>
   <style>
+    .context_container {
+      position: fixed;
+      top: 0px;
+      left: 50px;
+      font-size: 10px;
+    }
+    .context_class_1 {
+      text-align: center;
+    }
+    .context_class_2 {
+      text-align: center;
+    }
+    .context_text {
+      text-align: left;
+    }
+
     .fold_container {
       position: fixed;
       top: 0px;
@@ -1560,7 +1650,7 @@
       padding: 0;
       border: 0;
     }
-    .toolx_bar_container {
+    .toolbar_container {
       width: 500px;
       font-size: 10px;
     }
