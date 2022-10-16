@@ -1405,9 +1405,14 @@
     {
       controller.update();
       camera.updateProjectionMatrix();
+
+      //free memory
+      scene.remove(trajectory);
+      delete trajectory_geometry;
+      delete trajectory_material;
+      delete trajectory;
       
       //create curve path
-      scene.remove(trajectory);
       var list = calculateTrajectory(data.X,data.Y,data.Z,data.Vx*Math.pow(10,-5),data.Vy*Math.pow(10,-5),data.Vz*Math.pow(10,-5),data.mass1,data.mass2,data.distance,data.delta_t*Math.pow(10,4),data.t_length*Math.pow(10,4),data.points_number);
       var curve = new THREE.CatmullRomCurve3(list);
       var points = curve.getPoints(actual_points_num);
@@ -1415,6 +1420,10 @@
       trajectory_material = new THREE.LineBasicMaterial({color:0x00ffff});
       trajectory = new THREE.Line(trajectory_geometry,trajectory_material);
       scene.add(trajectory);
+
+      delete list;
+      delete curve;
+      delete points;
 
       sphereA.position.x = -data.mass2/(data.mass1+data.mass2)*data.distance;
       sphereB.position.x = data.mass1/(data.mass1+data.mass2)*data.distance;
